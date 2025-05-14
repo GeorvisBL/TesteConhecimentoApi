@@ -21,10 +21,15 @@ namespace TesteConhecimentoApi.Services.Service
             var contatos = await _contatoRepository.BuscarListaContatosAsync();
             var sucesso = contatos.Any();
 
+            foreach (var contato in contatos)
+            {
+                contato.Telefone = $"({contato.Telefone.Substring(0, 2)}){contato.Telefone.Substring(2, 5)}-{contato.Telefone.Substring(7)}";
+            }
+
             return new RetornoDto<IEnumerable<ContatoDto>>
             {
                 Status = sucesso,
-                Msg = sucesso ? "Dados de contato encontrados com sucesso!" : "Nenhum dado de contato encontrado.",
+                Msg = sucesso ? "Dados de contato retornados com sucesso!" : "Nenhum dado de contato encontrado.",
                 Data = sucesso ? contatos : null
             };
         }
@@ -32,14 +37,16 @@ namespace TesteConhecimentoApi.Services.Service
 
         public async Task<RetornoDto<string>> AddContato(ContatoAdicionarAtualizarDto contato)
         {
-            var sucesso = ValidarTelefone(contato.Telefone);                     
+            var sucesso = ValidarTelefone(contato.Telefone);   
 
             if (sucesso)
             {
+                var telefone = ObterTelefoneSoNumero(contato.Telefone);
+
                 var newContato = new Contato
                 {
                     Nome = contato.Nome,
-                    Telefone = contato.Telefone
+                    Telefone = telefone
                 };
 
                 _contatoRepository.AddContato(newContato);
@@ -59,6 +66,8 @@ namespace TesteConhecimentoApi.Services.Service
 
             if (sucesso)
             {
+                var telefone = ObterTelefoneSoNumero(contato.Telefone);
+
                 var contatoBanco = await _contatoRepository.BuscarContatoPorId(id);
                 if (contatoBanco == null)
                 {
@@ -70,7 +79,7 @@ namespace TesteConhecimentoApi.Services.Service
                 }
 
                 contatoBanco.Nome = contato.Nome;
-                contatoBanco.Telefone = contato.Telefone;
+                contatoBanco.Telefone = telefone;
 
                 _contatoRepository.UpdateContato(contatoBanco);
                 sucesso = await _contatoRepository.SaveChangesAsync();
@@ -107,7 +116,7 @@ namespace TesteConhecimentoApi.Services.Service
 
 
 
-        #region // 
+        #region // Metodos Privados
 
         private bool ValidarTelefone(string telefone)
         {
@@ -116,6 +125,15 @@ namespace TesteConhecimentoApi.Services.Service
 
             string padrao = @"^(\+55\s?)?\(?\d{2}\)?\s?\d{4,5}-?\d{4}$";
             return Regex.IsMatch(telefone, padrao);
+        }
+
+        private string ObterTelefoneSoNumero(string telefone)
+        {
+            string numeroTelefone = Regex.Replace(telefone, @"\D", "");
+
+            return numeroTelefone = numeroTelefone.Length >= 11 ?
+                numeroTelefone.Substring(numeroTelefone.Length - 11) :
+                numeroTelefone;
         }
 
         #endregion
